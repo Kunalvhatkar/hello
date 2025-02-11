@@ -1,31 +1,25 @@
 pipeline {
     agent any
-
     environment {
-        EC2_USER = 'ubuntu'  // Change if using a different EC2 user
-        EC2_HOST = '13.51.56.177' // Replace with your EC2 instance IP
-        SSH_KEY = credentials('jenkins-ssh-key') // Add SSH private key in Jenkins credentials
+        PHP_SERVER = 'ip-172-31-41-126' // Update with your PHP server IP
+        SSH_CREDENTIALS = 'ssh_id_rsa'  // The credential ID you added in Jenkins
     }
-
     stages {
-        stage('Clone Repository') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', credentialsId: 'github-token', url: 'https://github.com/Kunalvhatkar/hello.git'
+                git branch: 'main', credentialsId: 'githubtoken', url: 'https://github.com/Kunalvhatkar/hello.git'
             }
         }
-
-        stage('Deploy to AWS EC2') {
+        stage('Deploy to Server') {
             steps {
-                script {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
-                    cd /var/www/html
-                    sudo git pull origin main
-                    sudo chown -R www-data:www-data /var/www/html
-                    sudo chmod -R 755 /var/www/html
+                sshagent(credentials: [SSH_CREDENTIALS]) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no $PHP_SERVER << EOF
+                    cd /var/www/html/php-app
+                    git pull origin main
                     sudo systemctl restart apache2
                     EOF
-                    """
+                    '''
                 }
             }
         }
